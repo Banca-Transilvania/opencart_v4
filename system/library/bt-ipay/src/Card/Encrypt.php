@@ -9,7 +9,7 @@ class Encrypt
         'pan'
     ];
 
-    public const ALG = "AES-256-GCM";
+    public const ALG = "aes-256-gcm";
 
     private static $key;
 
