@@ -14,5 +14,6 @@ return [
     'updated_status_via_callback' => 'Received payment status: `%s` via callback',
     'updated_loy_status_via_callback' => 'Received loy status: `%s` via callback',
     'insufficient_funds' => 'Insufficient funds.',
-    'could_not_save_card' =>  'Could not save card - %s'
+    'could_not_save_card' =>  'Could not save card - %s',
+    'missing_address_information' => 'Missing address information, please contact the site administrator'
 ];

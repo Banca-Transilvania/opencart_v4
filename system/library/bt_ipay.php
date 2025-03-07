@@ -4,12 +4,16 @@ use BtIpay\Opencart\Language;
 use BtIpay\Opencart\Sdk\Client;
 use BtIpay\Opencart\Sdk\Config;
 use BtIpay\Opencart\Webhook\JWT;
+use Opencart\System\Library\Log;
+use BtIpay\Opencart\Card\Encrypt;
 use BtIpay\Opencart\Payment\Handler;
 use BtIpay\Opencart\Payment\Payload;
 use BtIpay\Opencart\Payment\CofPayload;
 use BtIpay\Opencart\Order\StatusService;
 use BtIpay\Opencart\Payment\ReturnHandler;
 use BtIpay\Opencart\Cancel\Result as CancelResult;
+
+use BtIpay\Opencart\Payment\PaymentErrorException;
 use BtIpay\Opencart\Refund\Result as RefundResult;
 use BtIpay\Opencart\Cancel\Handler as CancelHandler;
 
@@ -23,9 +27,6 @@ use BtIpay\Opencart\Capture\Service as CaptureService;
 
 use BtIpay\Opencart\Webhook\Handler as WebhookHandler;
 use BtIpay\Opencart\Card\ReturnHandler as CardReturnHandler;
-use BtIpay\Opencart\Card\Encrypt;
-
-use Opencart\System\Library\Log;
 
 require_once DIR_EXTENSION.'ipay_opencart/system/library/bt-ipay/vendor/autoload.php';
 class Bt_Ipay
@@ -81,6 +82,9 @@ class Bt_Ipay
                         $paymentModel->isAuthorize()
                     )
                 );
+
+        } catch (PaymentErrorException $th) {
+            return ["error" => true, "message" => $languageService->get($th->getMessage())];
         } catch (\Throwable $th) {
             $this->logger->write((string) $th);
             return ["error" => true, "message" => "Could not process payment request"];

@@ -10,9 +10,7 @@ class BtIpay extends Model
 	public const CONFIG_KEY = "payment_bt_ipay";
 	public function getMethods(array $address)
 	{
-
-
-		if ($this->getConfig('enabled') === "1") {
+		if ($this->getConfig('enabled') === "1" && $this->methodIsAvailable()) {
 			return array(
 				'code' => 'bt_ipay',
 				'name' => $this->getConfig('title'),
@@ -23,6 +21,17 @@ class BtIpay extends Model
 				'sort_order' => $this->getConfig('sort_order')
 			);
 		}
+	}
+
+	private function methodIsAvailable() {
+		$this->load->model('checkout/cart');
+		$this->load->model('setting/setting');
+		$billingAddressIsRequired = $this->model_setting_setting->getValue("config_checkout_payment_address");
+
+		if (!$this->cart->hasShipping()) {
+			return $billingAddressIsRequired == true;
+		}
+		return true;
 	}
 
 	/**
