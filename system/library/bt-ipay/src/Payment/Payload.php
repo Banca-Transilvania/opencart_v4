@@ -96,6 +96,15 @@ class Payload
 
     private function getDeliveryInfo(): array
     {
+        if (empty($this->getOrderAttr('shipping_iso_code_2')))
+        {
+            if (empty($this->getOrderAttr('payment_iso_code_2')))
+            {
+                throw new PaymentErrorException('missing_address_information');
+            }
+            return $this->getBillingInfo();
+        }
+        
         $data = array(
             'deliveryType' => $this->getShippingMethod(),
             'country' => $this->getOrderAttr('shipping_iso_code_2'),
