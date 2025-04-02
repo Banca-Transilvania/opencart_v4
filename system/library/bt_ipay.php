@@ -75,7 +75,9 @@ class Bt_Ipay
                     $client->startPayment(
                         new Payload(
                             $order, 
-                            $returnUrl, 
+                            $returnUrl,
+                            $paymentModel->getOrderTotal(),
+                            $paymentModel->getCurrency(),
                             $this->getCof($post, $customer, $paymentModel),
                             $config->getValue('description')
                         ),

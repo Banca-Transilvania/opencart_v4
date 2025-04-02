@@ -335,4 +335,25 @@ class BtIpay extends Model
 		$this->load->model('checkout/order');
 		return $this->model_checkout_order->addHistory($order_id, $order_status_id, $comment);
 	}
+
+	public function getCurrency(): string
+	{
+		return $this->session->data['currency'];
+	}
+
+	public function getOrderTotal(): float
+	{
+		$totals = [];
+		$taxes = $this->cart->getTaxes();
+		$total = 0;
+
+		$this->load->model('checkout/cart');
+
+		($this->model_checkout_cart->getTotals)($totals, $taxes, $total);
+		return $this->currency->convert(
+			floatval($total),
+			$this->config->get('config_currency'),
+			$this->session->data['currency']
+		);
+	}
 }
