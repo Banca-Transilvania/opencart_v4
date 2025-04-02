@@ -36,7 +36,7 @@ class ReturnHandler
             $this->updateCardData($response);
             $message = new Message("successful_created_payment", [$this->ipayId]);
 
-            if (strlen($response->getLoyId())) {
+            if (strlen($response->getLoyId() ?? '')) {
                 $this->statusService->addMessage(
                     new Message("successful_created_payment", [$response->getLoyId()])
                 );
