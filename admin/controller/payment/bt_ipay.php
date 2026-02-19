@@ -538,7 +538,7 @@ class BtIpay extends Controller
 			$this->error['warning'] = $this->language->get('unknown_store');
 		}
 
-		return !$this->error;
+		return empty($this->error);
 	}
 
 	private function isValidStoreId(): bool

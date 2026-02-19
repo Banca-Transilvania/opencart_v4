@@ -1,7 +1,7 @@
 <?php
 namespace Opencart\Catalog\Model\Extension\IpayOpencart\Total;
 
-class BtIpayTotalAvailable
+class BtIpayTotalAvailable extends \Opencart\System\Engine\Model
 {
     
 }

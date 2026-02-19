@@ -1,7 +1,7 @@
 <?php
 namespace Opencart\Catalog\Model\Extension\IpayOpencart\Total;
 
-class BtIpayNotCapturedAmount
+class BtIpayNotCapturedAmount extends \Opencart\System\Engine\Model
 {
     
 }

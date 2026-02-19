@@ -37,7 +37,7 @@ class Handler
             $this->statusService->addMessage(
                 new Message(
                     'partial_capture_amount',
-                    [$this->paymentModel->formatCurrency($result->getTotal())]
+                    [$this->paymentModel->formatCurrency($result->getTotal(), $this->orderId)]
                 )
             );
         }
@@ -48,7 +48,7 @@ class Handler
 
         $message = new Message(
             'fully_captured_amount',
-            [$this->paymentModel->formatCurrency($result->getTotal())]
+            [$this->paymentModel->formatCurrency($result->getTotal(), $this->orderId)]
         );
 
         $this->updateOrderStatus($message);

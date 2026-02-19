@@ -1,7 +1,7 @@
 <?php
 namespace Opencart\Catalog\Model\Extension\IpayOpencart\Total;
 
-class BtIpayNotCapturedLoyality
+class BtIpayNotCapturedLoyality extends \Opencart\System\Engine\Model
 {
     
 }

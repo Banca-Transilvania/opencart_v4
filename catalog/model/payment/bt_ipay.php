@@ -21,6 +21,7 @@ class BtIpay extends Model
 				'sort_order' => $this->getConfig('sort_order')
 			);
 		}
+		return null;
 	}
 
 	private function methodIsAvailable() {
@@ -136,14 +137,36 @@ class BtIpay extends Model
 		return [];
 	}
 
+	public function getOrderCurrency(int $orderId): string
+    {
+        $qry = $this->db->query(
+            "SELECT currency_code FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . $orderId . "'"
+        );
+
+        if ($qry->num_rows == 0 || !isset($qry->row['currency_code']) || !is_string($qry->row['currency_code'])) {
+
+            throw new \Exception("Could not determine order currency");
+        }
+            
+        return $qry->row['currency_code'];
+    }
+
+	private function totalBaseCurrency(string $orderCurrency, float $total): float
+    {
+        $baseCurrency = $this->config->get('config_currency');
+        return $this->currency->convert($total, $orderCurrency, $baseCurrency);
+    }
+
 	public function addOrderTotals(int $orderId, float $paymentTotal, float $loyTotal)
 	{
+        $orderCurrency = $this->getOrderCurrency($orderId);
+
 		$totals = [
 			[
 				'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay',
                 'title' => 'BT iPay Total(currency)',
-                'value' => $paymentTotal,
+                'value' => $this->totalBaseCurrency($orderCurrency, $paymentTotal),
                 'sort_order' => 10
 			]
 		];
@@ -152,7 +175,7 @@ class BtIpay extends Model
                 'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay_loy',
                 'title' => 'BT iPay Total(loyalty points)',
-                'value' => $loyTotal,
+                'value' => $this->totalBaseCurrency($orderCurrency, $loyTotal),
                 'sort_order' => 11
             ];
 		}

@@ -378,12 +378,13 @@ class BtIpay extends Model
      * Format float to currency
      *
      * @param float $amount
+     * @param int $orderId
      *
      * @return void
      */
-    public function formatCurrency(float $amount)
+    public function formatCurrency(float $amount, int $orderId)
     {
-        return $this->currency->format($amount, $this->config->get('config_currency'), 1);
+        return $this->currency->format($amount,  $this->getOrderCurrency($orderId), 1);
     }
 
     /**
@@ -395,7 +396,49 @@ class BtIpay extends Model
      *
      * @return string
      */
+
     public function addOrderHistory($order_id, $order_status_id, $comment = '')
+    {
+        $this->load->model('user/api');
+		if (method_exists($this->model_user_api, 'deleteSessionBySessionId')) {
+            return $this->addOrderHistory40($order_id, $order_status_id, $comment);
+        }
+        return $this->addOrderHistory41($order_id, $order_status_id, $comment);
+    }
+
+
+    public function addOrderHistory41($order_id, $order_status_id, $comment = '')
+    {
+        $this->load->model('setting/store');
+        
+        $store_id = $this->config->get('config_store_id');
+        $language = $this->config->get('config_language');
+        $currency = $this->config->get('config_currency');
+        
+        // Create store instance
+        $store = $this->model_setting_store->createStoreInstance((int)$store_id, $language, $currency);
+        
+        // Setup request
+        $store->request->get['route'] = 'api/order';
+        $store->request->get['call'] = 'history_add';
+        $store->request->post = [
+            'order_id'        => $order_id,
+            'order_status_id' => $order_status_id,
+            'comment'         => $comment,
+            'notify'          => 0
+        ];
+        
+        // Call API controller
+        $store->load->controller($store->request->get['route']);
+        $json = $store->response->getOutput();
+        
+        // Cleanup
+        $store->session->destroy();
+        
+        return $json;
+    }
+
+    public function addOrderHistory40($order_id, $order_status_id, $comment = '')
     {
         $json = array();
 
@@ -484,17 +527,38 @@ class BtIpay extends Model
         return implode(",", $data);
     }
 
+    private function totalBaseCurrency(string $orderCurrency, float $total): float
+    {
+        $baseCurrency = $this->config->get('config_currency');
+        return $this->currency->convert($total, $orderCurrency, $baseCurrency);
+    }
+    
+    public function getOrderCurrency(int $orderId): string
+    {
+        $qry = $this->db->query(
+            "SELECT currency_code FROM `" . DB_PREFIX . "order` WHERE `order_id` = '" . $orderId . "'"
+        );
+
+        if ($qry->num_rows == 0 || !isset($qry->row['currency_code']) || !is_string($qry->row['currency_code'])) {
+
+            throw new \Exception("Could not determine order currency");
+        }
+            
+        return $qry->row['currency_code'];
+    }
+
     public function updateOrderTotals(int $orderId, string $ipayId, float $paymentTotal, float $loyTotal)
 	{
         $authorized = $this->getPaymentByOrderId($orderId);
         $notCaptured = $authorized['amount'] + $authorized['loy_amount'] - $paymentTotal - $loyTotal;
+        $orderCurrency = $this->getOrderCurrency($orderId);
 
 		$totals = [
 			[
 				'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay_captured_amount',
                 'title' => 'BT iPay Total Captured(currency)',
-                'value' => $paymentTotal,
+                'value' => $this->totalBaseCurrency($orderCurrency, $paymentTotal),
                 'sort_order' => 11
 			]
 		];
@@ -504,7 +568,7 @@ class BtIpay extends Model
                 'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay_not_captured_amount',
                 'title' => '<span style="color:red">BT iPay Total Not Captured(currency)</span>',
-                'value' => $authorized['amount'] - $paymentTotal,
+                'value' => $this->totalBaseCurrency($orderCurrency, $authorized['amount'] - $paymentTotal),
                'sort_order' => 11
             ];
         }
@@ -514,7 +578,7 @@ class BtIpay extends Model
                 'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay_captured_loyalty',
                 'title' => 'BT iPay Total Captured(loyalty points)',
-                'value' => $loyTotal,
+                'value' => $this->totalBaseCurrency($orderCurrency, $loyTotal),
                 'sort_order' => 12
             ];
             if ($authorized['loy_amount'] - $loyTotal  > 0.005) {
@@ -522,7 +586,7 @@ class BtIpay extends Model
                     'extension' => 'ipay_opencart',
                     'code' => 'bt_ipay_not_captured_loyality',
                     'title' => '<span style="color:red">BT iPay Total Not Captured(loyalty points)</span>',
-                    'value' => $authorized['loy_amount'] - $loyTotal,
+                    'value' => $this->totalBaseCurrency($orderCurrency, $authorized['loy_amount'] - $loyTotal),
                    'sort_order' => 12
                 ];
             }
@@ -533,7 +597,7 @@ class BtIpay extends Model
                 'extension' => 'ipay_opencart',
                 'code' => 'bt_ipay_total_not_captured',
                 'title' => '<span style="color:red">BT iPay Not Captured(Unpaid amount)</span>',
-                'value' => $notCaptured,
+                'value' => $this->totalBaseCurrency($orderCurrency, $notCaptured),
                'sort_order' => 13
             ];
             if ($loyTotal > 0) {
@@ -541,7 +605,7 @@ class BtIpay extends Model
                     'extension' => 'ipay_opencart',
                     'code' => 'bt_ipay_total_paid',
                     'title' => 'BT iPay Total (Captured)',
-                    'value' => $paymentTotal + $loyTotal,
+                    'value' => $this->totalBaseCurrency($orderCurrency, $paymentTotal + $loyTotal),
                 'sort_order' => 14
                 ];
             }

@@ -77,7 +77,7 @@ class Result
 		$this->loyId = $loyId;
 	}
 
-	public function getLoyId(): string
+	public function getLoyId(): ?string
 	{
 		return $this->loyId;
 	}
