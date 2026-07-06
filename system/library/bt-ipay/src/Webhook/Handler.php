@@ -6,6 +6,7 @@ use BtIpay\Opencart\Sdk\Client;
 use BtIpay\Opencart\Sdk\Config;
 use BtIpay\Opencart\Order\Message;
 use BtIpay\Opencart\Order\StatusService;
+use BTransilvania\Api\Model\IPayStatuses;
 
 class Handler
 {
@@ -75,9 +76,28 @@ class Handler
 		$statusService = $this->getStatusService($orderId);
 		if ($isLoy) {
 			$this->addLoyStatus($paymentStatus, $statusService);
-			return;
 		}
-		$this->updateOrderStatus($paymentStatus, $statusService);
+
+		$this->updateOrderStatus($this->getCombinedStatus($ipayId), $statusService);
+	}
+
+	/**
+	 * Resolve the effective order status from the main payment and the
+	 * loyalty payment statuses (split loy + card payments).
+	 *
+	 * @return string
+	 */
+	private function getCombinedStatus(string $ipayId): string
+	{
+		$statuses = $this->paymentModel->getPaymentStatuses($ipayId);
+
+		$paymentStatus = $statuses['status'] ?? null;
+		$loyStatus = $statuses['loy_status'] ?? null;
+		if ($loyStatus === '') {
+			$loyStatus = null;
+		}
+
+		return IPayStatuses::getCombinedStatus($paymentStatus, $loyStatus);
 	}
 
 	private function getPayload(\stdClass $jwt)
@@ -125,13 +145,13 @@ class Handler
 			if ($isLoy) {
 				$this->paymentModel->updateLoyStatusAndAmount(
 					$ipayId,
-					StatusService::STATUS_APPROVED,
+					StatusService::STATUS_DEPOSITED,
 					$totalCaptured
 				);
 			} else {
 				$this->paymentModel->updatePaymentStatusAndAmount(
 					$ipayId,
-					StatusService::STATUS_APPROVED,
+					StatusService::STATUS_DEPOSITED,
 					$totalCaptured
 				);
 			}
@@ -252,6 +272,6 @@ class Handler
 	}
 
 	private function getPaymentByiPayId(): ?array {
-		return $this->paymentModel->getPaymentByIpayId($this->getIpayId());
+		return $this->paymentModel->getPaymentByiPayId($this->getIpayId());
 	}
 }

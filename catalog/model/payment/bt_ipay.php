@@ -269,6 +269,16 @@ class BtIpay extends Model
 		return null;
 	}
 
+	public function getPaymentStatuses(string $ipayId): ?array
+	{
+		$qry = $this->db->query("SELECT `status`, `loy_status` FROM `" . DB_PREFIX . "bt_ipay_payments` WHERE `ipay_id` = '" . $this->db->escape($ipayId) . "' OR `loy_id` = '" . $this->db->escape($ipayId) . "' LIMIT 1");
+
+		if ($qry->num_rows) {
+			return $qry->row;
+		}
+		return null;
+	}
+
 	public function getOrderId(string $ipayId): ?int
 	{
 		$qry = $this->db->query("SELECT `order_id` FROM `" . DB_PREFIX . "bt_ipay_payments` WHERE `ipay_id` = '" . $this->db->escape($ipayId) . "' AND `status` = 'CREATED' LIMIT 1");

@@ -2,6 +2,7 @@
 namespace Opencart\Admin\Model\Extension\IpayOpencart\Payment;
 
 use BtIpay\Opencart\Order\StatusService;
+use BTransilvania\Api\Model\IPayStatuses;
 use Opencart\System\Engine\Model;
 
 class BtIpay extends Model
@@ -196,7 +197,13 @@ class BtIpay extends Model
         );
 
         if ($qry->num_rows > 0) {
-            return $qry->rows;
+            return array_map(function ($row) {
+                // Single status for a split (card + loyalty) payment.
+                $row['combined_status'] = ($row['loy_id'] ?? '') !== ''
+                    ? IPayStatuses::getCombinedStatus($row['status'], $row['loy_status'])
+                    : $row['status'];
+                return $row;
+            }, $qry->rows);
         }
         return [];
     }

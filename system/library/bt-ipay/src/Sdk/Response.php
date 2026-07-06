@@ -1,13 +1,13 @@
 <?php
 namespace BtIpay\Opencart\Sdk;
 
-use BTransilvania\Api\Model\Response\ResponseModel;
+use BTransilvania\Api\Model\Response\ResponseModelInterface;
 
 class Response
 {
-    protected ResponseModel $response;
-    
-    public function __construct(ResponseModel $response) {
+    protected ResponseModelInterface $response;
+
+    public function __construct(ResponseModelInterface $response) {
         $this->response = $response;
     }
 
