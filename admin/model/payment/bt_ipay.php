@@ -447,7 +447,7 @@ class BtIpay extends Model
 
     public function addOrderHistory40($order_id, $order_status_id, $comment = '')
     {
-        $log = new \Opencart\System\Library\Log('bt-ipay-status-messages.log');
+        $log = new \Opencart\System\Library\Log('bt-ipay.log');
 
         $order_id = (int) $order_id;
         $order_status_id = (int) $order_status_id;
@@ -529,7 +529,7 @@ class BtIpay extends Model
         $session = $this->apiSession();
 
         if ($session === null) {
-            $log = new \Opencart\System\Library\Log('bt-ipay-status-messages.log');
+            $log = new \Opencart\System\Library\Log('bt-ipay.log');
             $log->write('Api session is null, cannot change status via api');
             return null;
         }
