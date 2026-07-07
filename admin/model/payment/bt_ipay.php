@@ -459,9 +459,6 @@ class BtIpay extends Model
             return '';
         }
 
-        // Try the storefront api first so OpenCart's full status-change pipeline
-        // (stock subtract/restock, coupon/reward confirm/unconfirm, subscriptions,
-        // order-history events) runs.
         $json = $this->addOrderHistoryViaApi40($order_id, $order_status_id, $comment);
 
         if ($json !== null) {
@@ -478,10 +475,6 @@ class BtIpay extends Model
             return '';
         }
 
-        // The api call requires a configured API user plus a self-reachable,
-        // TLS-trusted catalog URL and used to silently drop the status change when
-        // either was missing. Fall back to direct DB writes so the status change is
-        // never lost; the fallback skips the pipeline side effects.
         $log->write('Api order history call failed, falling back to direct status update for order: ' . $order_id);
 
         $this->db->query(
@@ -536,7 +529,6 @@ class BtIpay extends Model
 
         $curl = curl_init();
 
-        // Set SSL if required
         if (substr($url, 0, 5) == 'https') {
             curl_setopt($curl, CURLOPT_PORT, 443);
         }
