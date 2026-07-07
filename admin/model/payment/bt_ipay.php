@@ -447,8 +447,66 @@ class BtIpay extends Model
 
     public function addOrderHistory40($order_id, $order_status_id, $comment = '')
     {
-        $json = array();
+        $log = new \Opencart\System\Library\Log('bt-ipay-status-messages.log');
 
+        $order_id = (int) $order_id;
+        $order_status_id = (int) $order_status_id;
+
+        $query = $this->db->query("SELECT order_id FROM `" . DB_PREFIX . "order` WHERE order_id = '" . $order_id . "'");
+
+        if (!$query->num_rows) {
+            $log->write('Cannot change status, order not found: ' . $order_id);
+            return '';
+        }
+
+        // Try the storefront api first so OpenCart's full status-change pipeline
+        // (stock subtract/restock, coupon/reward confirm/unconfirm, subscriptions,
+        // order-history events) runs.
+        $json = $this->addOrderHistoryViaApi40($order_id, $order_status_id, $comment);
+
+        if ($json !== null) {
+            $data = json_decode($json, true);
+
+            if (is_array($data) && isset($data['success'])) {
+                return $json;
+            }
+        }
+
+        // Preserve the permission gate the api session enforced.
+        if (!$this->user->hasPermission('modify', 'sale/order')) {
+            $log->write('User lacks sale/order modify permission, cannot change status for order: ' . $order_id);
+            return '';
+        }
+
+        // The api call requires a configured API user plus a self-reachable,
+        // TLS-trusted catalog URL and used to silently drop the status change when
+        // either was missing. Fall back to direct DB writes so the status change is
+        // never lost; the fallback skips the pipeline side effects.
+        $log->write('Api order history call failed, falling back to direct status update for order: ' . $order_id);
+
+        $this->db->query(
+            "UPDATE `" . DB_PREFIX . "order` SET order_status_id = '" . $order_status_id . "', date_modified = NOW() WHERE order_id = '" . $order_id . "'"
+        );
+
+        $this->db->query(
+            "INSERT INTO `" . DB_PREFIX . "order_history` SET order_id = '" . $order_id . "', order_status_id = '" . $order_status_id . "', notify = '0', comment = '" . $this->db->escape($comment) . "', date_added = NOW()"
+        );
+
+        return '';
+    }
+
+    /**
+     * Send the status change through the storefront api/sale/order.addHistory
+     * endpoint so OpenCart's full status-change pipeline runs
+     *
+     * @param int $order_id
+     * @param int $order_status_id
+     * @param string $comment
+     *
+     * @return string|null Raw endpoint response, null when no api session could be created or curl failed
+     */
+    private function addOrderHistoryViaApi40(int $order_id, int $order_status_id, string $comment)
+    {
         $data = array(
             'order_id' => $order_id,
             'order_status_id' => $order_status_id,
@@ -469,6 +527,13 @@ class BtIpay extends Model
         }
 
         $session = $this->apiSession();
+
+        if ($session === null) {
+            $log = new \Opencart\System\Library\Log('bt-ipay-status-messages.log');
+            $log->write('Api session is null, cannot change status via api');
+            return null;
+        }
+
         $curl = curl_init();
 
         // Set SSL if required
@@ -488,33 +553,34 @@ class BtIpay extends Model
         $json = curl_exec($curl);
 
         curl_close($curl);
-        return $json;
+
+        return is_string($json) ? $json : null;
     }
-    
+
     /**
      * Create a session with api credentials for the add order history
      * call
      *
      * @return  \Opencart\System\Library\Session|null
      */
-	private function apiSession()
-	{
+    private function apiSession()
+    {
         $this->load->model('user/api');
-		$api_info = $this->model_user_api->getApi($this->config->get('config_api_id'));
+        $api_info = $this->model_user_api->getApi($this->config->get('config_api_id'));
         if ($api_info && $this->user->hasPermission('modify', 'sale/order')) {
             $session = new \Opencart\System\Library\Session($this->config->get('session_engine'), $this->registry);
-            
+
             $session->start();
-                    
+
             $this->model_user_api->deleteSessionBySessionId($session->getId());
-            
+
             $this->model_user_api->addSession($api_info['api_id'], $session->getId(), $this->request->server['REMOTE_ADDR']);
-            
+
             $session->data['api_id'] = $api_info['api_id'];
             $session->close();
-			return $session;
+            return $session;
         }
-	}
+    }
 
     /**
      * Format array values for update
