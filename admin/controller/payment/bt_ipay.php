@@ -9,7 +9,7 @@ use Opencart\System\Engine\Controller;
 class BtIpay extends Controller
 {
 
-	public const BT_IPAY_VERSION = "1.0.3";
+	public const BT_IPAY_VERSION = "1.0.4";
 
 	public const CONFIG_KEY = "payment_bt_ipay";
 	private $error = array();
